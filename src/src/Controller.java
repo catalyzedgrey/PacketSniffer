@@ -32,7 +32,7 @@ public class Controller {
 
     private ArrayList<String> allPackets;
 
-    private int frameNo = 1;
+    private int frameNo;
 
     public void initialize() {
         initNetworks();
@@ -70,8 +70,10 @@ public class Controller {
     }
 
     private void resetCapturing() {
-        frameNo = 0;
+        frameNo = 1;
         allPackets.clear();
+        PacketsListView.getItems().clear();
+        PacketInfoTextArea.setText("");
     }
 
     private void CaptureControl() {

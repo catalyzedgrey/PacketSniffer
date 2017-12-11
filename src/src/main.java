@@ -39,31 +39,28 @@ import java.util.List;
 
 public class main extends Application {
 
+    private Scene scene;
+
     @Override
     public void start(Stage stage) throws Exception {
 //        Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));
 //        primaryStage.setTitle("Hello World");
 //        primaryStage.setScene(new Scene(root, 300, 275));
 //        primaryStage.show();
-
         setupUI(stage);
-
-
     }
 
     public void setupUI(Stage stage) {
 
         stage.setTitle("Menu Sample");
-        Scene scene = new Scene(new VBox(), 400, 350);
+        scene = new Scene(new VBox(), 1280, 720);
         scene.setFill(Color.OLDLACE);
-
 
         MenuBar menuBar = new MenuBar();
 
         TextArea textArea = new TextArea();
-        textArea.setPrefSize(400, 400);
+        textArea.setPrefSize(1280, 720);
         textArea.setEditable(false);
-
 
 
         // --- Menu File
@@ -72,15 +69,11 @@ public class main extends Application {
         startCapture.setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent t) {
                 textArea.setText(capture());
-
             }
         });
         MenuItem add2 = new MenuItem("Test");
         add2.setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent t) {
-
-
-
             }
         });
 
@@ -97,23 +90,16 @@ public class main extends Application {
 
         ((VBox) scene.getRoot()).getChildren().addAll(menuBar);
 
+        initNetworks();
 
-        ObservableList<String> options =
-                FXCollections.observableArrayList(
-                        "Ethernet",
-                        "Wifi"
-                );
-        final ComboBox comboBox = new ComboBox(options);
-        ((VBox) scene.getRoot()).getChildren().addAll(comboBox);
         ((VBox) scene.getRoot()).getChildren().addAll(textArea);
-
 
 
         stage.setScene(scene);
         stage.show();
     }
 
-//
+    //
 //    public JFrame frame;
 //    public JTextArea output;
 //
@@ -129,8 +115,36 @@ public class main extends Application {
 //            frame.add(l);
 //        }
 //    }
+    private List<PcapIf> alldevs;
+    private StringBuilder errbuf;
+    private ComboBox NetworkDevicesComboBox;
 
-    public static String capture() {
+    private void initNetworks() {
+
+        alldevs = new ArrayList<>();
+        errbuf = new StringBuilder(); // For any error msgs
+        int r = Pcap.findAllDevs(alldevs, errbuf);
+        if (r == Pcap.NOT_OK || alldevs.isEmpty()) {
+            System.err.printf("Can't read list of devices, error is " + errbuf.toString());
+            return;
+        }
+
+        //Get network devices and add it to combobox
+        int i = 0;
+        ArrayList<String> allDevices = new ArrayList();
+        for (PcapIf device : alldevs) {
+            // String description = (device.getDescription() != null) ?
+            //        device.getDescription() : "No description available";
+            allDevices.add(String.format("#%d: [%s]", i++, (device.getDescription() != null) ? device.getDescription()
+                    : device.getName()));
+        }
+        NetworkDevicesComboBox = new ComboBox(FXCollections.observableList(allDevices));
+        /////////////////////////////////////////////////
+
+        ((VBox) scene.getRoot()).getChildren().addAll(NetworkDevicesComboBox);
+    }
+
+    private String capture() {
 
         // Create a stream to hold the output
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -140,27 +154,17 @@ public class main extends Application {
         // Tell Java to use your special stream
         System.setOut(ps);
 
+        PcapIf device = null;
+        try {
+            device = alldevs.get(NetworkDevicesComboBox.getSelectionModel().getSelectedIndex());
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("ERROR");
+            alert.setContentText("You have not chosen a network device!");
+            alert.showAndWait();
+            return null;
+        }
 
-        List<PcapIf> alldevs = new ArrayList<PcapIf>();
-        StringBuilder errbuf = new StringBuilder(); // For any error msgs
-        String[] s = new String[10];
-        int r = Pcap.findAllDevs(alldevs, errbuf);
-        if (r == Pcap.NOT_OK || alldevs.isEmpty()) {
-            System.err.printf("Can't read list of devices, error is " + errbuf.toString());
-            return baos.toString();
-        }
-        System.out.println("Network devices found:");
-        int i = 0;
-        for (PcapIf device : alldevs) {
-            String description = (device.getDescription() != null) ? device
-                    .getDescription() : "No description available";
-            System.out.printf("#%d: %s [%s]\n", i++, device.getName(),
-                    description);
-        }
-        PcapIf device = alldevs.get(1);
-        System.out.printf("\nChoosing '%s' on your behalf:\n",
-                (device.getDescription() != null) ? device.getDescription()
-                        : device.getName());
         int snaplen = 64 * 1024; // Capture all packets, no trucation
         int flags = Pcap.MODE_PROMISCUOUS; // capture all packets
         int timeout = 10 * 1000; // 10 seconds in millis

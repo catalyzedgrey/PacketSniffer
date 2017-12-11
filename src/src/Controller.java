@@ -1,0 +1,123 @@
+package src;
+
+import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.TextArea;
+import org.jnetpcap.Pcap;
+import org.jnetpcap.PcapIf;
+import org.jnetpcap.packet.PcapPacketHandler;
+import org.jnetpcap.protocol.network.Ip4;
+
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
+
+
+public class Controller {
+    private List<PcapIf> alldevs;
+    private StringBuilder errbuf;
+    @FXML
+    private ComboBox netDevicesCombo;
+    @FXML
+    private Button CaptureBtn;
+    @FXML
+    private TextArea PacketInfoTextArea;
+
+    private Boolean Capturing = false;
+
+    public void initialize() {
+        initNetworks();
+    }
+
+
+    private void initNetworks() {
+        alldevs = new ArrayList<>();
+        errbuf = new StringBuilder(); // For any error msgs
+        int r = Pcap.findAllDevs(alldevs, errbuf);
+        if (r == Pcap.NOT_OK || alldevs.isEmpty()) {
+            System.err.printf("Can't read list of devices, error is " + errbuf.toString());
+            return;
+        }
+
+        //Get network devices and add it to combobox
+        int i = 0;
+        for (PcapIf device : alldevs) {
+            netDevicesCombo.getItems().addAll(String.format("#%d: [%s]", i++, (device.getDescription() != null) ? device.getDescription()
+                    : device.getName()));
+        }
+        netDevicesCombo.getSelectionModel().selectFirst();
+    }
+
+    public void CaptureBtnClick() {
+        if (Capturing) {
+            Capturing = false;
+            CaptureBtn.setText("Start Capturing");
+        } else {
+            Capturing = true;
+            CaptureBtn.setText("Stop Capturing");
+            new Thread(() -> PacketInfoTextArea.setText(capture())).start();
+        }
+    }
+
+    private String capture() {
+
+        // Create a stream to hold the output
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+        // IMPORTANT: Save the old System.out!
+        PrintStream old = System.out;
+        // Tell Java to use your special stream
+        System.setOut(ps);
+
+        PcapIf device = null;
+        try {
+            device = alldevs.get(netDevicesCombo.getSelectionModel().getSelectedIndex());
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("ERROR");
+            alert.setContentText("You have not chosen a network device!");
+            alert.showAndWait();
+            return null;
+        }
+
+        int snaplen = 64 * 1024; // Capture all packets, no trucation
+        int flags = Pcap.MODE_PROMISCUOUS; // capture all packets
+        int timeout = 10 * 1000; // 10 seconds in millis
+        Pcap pcap = Pcap.openLive(device.getName(), snaplen, flags, timeout, errbuf);
+        if (pcap == null) {
+            System.err.printf("Error while opening device for capture: "
+                    + errbuf.toString());
+            return baos.toString();
+        }
+
+        final int[] j = {0};
+        PcapPacketHandler<String> jpacketHandler = (packet, user) -> {
+            Ip4 ip = new Ip4();
+            if (!packet.hasHeader(ip)) {
+                return; // Not IP packet
+            }
+            /*s[j[0]] = packet.toString();
+            System.out.println(s[j[0]]);
+            System.out.print("\n\n\n\n\n-------------------------------------------------------\n\n\n\n");
+            j[0]++;*/
+            System.out.println(packet);
+        };
+
+        while (Capturing) {
+            pcap.loop(1, jpacketHandler, "jNetPcap");
+        }
+
+        pcap.close();
+
+        // Put things back
+        System.out.flush();
+        System.setOut(old);
+        // Show what happened
+        System.out.println("Here: " + baos.toString());
+
+        return baos.toString();
+    }
+}

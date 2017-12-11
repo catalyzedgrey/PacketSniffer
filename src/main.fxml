@@ -34,6 +34,6 @@
                </FlowPane.margin></Button>
             </children>
         </FlowPane>
-      <ListView layoutX="7.0" layoutY="57.0" prefHeight="200.0" prefWidth="200.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" />
+      <ListView fx:id="PacketsListView" layoutX="7.0" layoutY="57.0" onMouseClicked="#ListViewClicked" prefHeight="200.0" prefWidth="200.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" />
       <TextArea fx:id="PacketInfoTextArea" editable="false" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="260.0" />
     </children></AnchorPane>

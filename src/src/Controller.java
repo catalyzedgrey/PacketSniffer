@@ -1,10 +1,9 @@
 package src;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.*;
+import jdk.internal.org.objectweb.asm.tree.FrameNode;
 import org.jnetpcap.Pcap;
 import org.jnetpcap.PcapIf;
 import org.jnetpcap.packet.PcapPacketHandler;
@@ -25,13 +24,20 @@ public class Controller {
     private Button CaptureBtn;
     @FXML
     private TextArea PacketInfoTextArea;
+    @FXML
+    private ListView PacketsListView;
 
     private Boolean Capturing = false;
+    private Thread captureThread;
+
+    private ArrayList<String> allPackets;
+
+    private int frameNo = 1;
 
     public void initialize() {
         initNetworks();
+        allPackets = new ArrayList<>();
     }
-
 
     private void initNetworks() {
         alldevs = new ArrayList<>();
@@ -41,7 +47,6 @@ public class Controller {
             System.err.printf("Can't read list of devices, error is " + errbuf.toString());
             return;
         }
-
         //Get network devices and add it to combobox
         int i = 0;
         for (PcapIf device : alldevs) {
@@ -58,12 +63,30 @@ public class Controller {
         } else {
             Capturing = true;
             CaptureBtn.setText("Stop Capturing");
-            new Thread(() -> PacketInfoTextArea.setText(capture())).start();
+            resetCapturing();
+            captureThread = new Thread(this::CaptureControl);
+            captureThread.start();
         }
     }
 
-    private String capture() {
+    private void resetCapturing() {
+        frameNo = 0;
+        allPackets.clear();
+    }
 
+    private void CaptureControl() {
+        while (Capturing)
+            capture();
+    }
+
+    public void ListViewClicked() {
+        try {
+            PacketInfoTextArea.setText(allPackets.get(PacketsListView.getSelectionModel().getSelectedIndex()));
+        } catch (Exception e) {
+        }
+    }
+
+    private void capture() {
         // Create a stream to hold the output
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(baos);
@@ -80,7 +103,7 @@ public class Controller {
             alert.setTitle("ERROR");
             alert.setContentText("You have not chosen a network device!");
             alert.showAndWait();
-            return null;
+            return;
         }
 
         int snaplen = 64 * 1024; // Capture all packets, no trucation
@@ -88,9 +111,12 @@ public class Controller {
         int timeout = 10 * 1000; // 10 seconds in millis
         Pcap pcap = Pcap.openLive(device.getName(), snaplen, flags, timeout, errbuf);
         if (pcap == null) {
-            System.err.printf("Error while opening device for capture: "
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("ERROR");
+            alert.setContentText("Error while opening device for capture: "
                     + errbuf.toString());
-            return baos.toString();
+            alert.showAndWait();
+            return;
         }
 
         final int[] j = {0};
@@ -99,25 +125,18 @@ public class Controller {
             if (!packet.hasHeader(ip)) {
                 return; // Not IP packet
             }
-            /*s[j[0]] = packet.toString();
-            System.out.println(s[j[0]]);
-            System.out.print("\n\n\n\n\n-------------------------------------------------------\n\n\n\n");
-            j[0]++;*/
             System.out.println(packet);
         };
-
-        while (Capturing) {
-            pcap.loop(1, jpacketHandler, "jNetPcap");
-        }
-
+        pcap.loop(1, jpacketHandler, "jNetPcap");
         pcap.close();
 
         // Put things back
         System.out.flush();
         System.setOut(old);
         // Show what happened
-        System.out.println("Here: " + baos.toString());
+        System.out.println("frameNo: " + frameNo + baos.toString());
 
-        return baos.toString();
+        Platform.runLater(() -> PacketsListView.getItems().add("Frame #" + frameNo++));
+        allPackets.add(baos.toString());
     }
 }

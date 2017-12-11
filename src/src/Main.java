@@ -13,6 +13,7 @@ import javafx.scene.control.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.application.Application;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,5 +34,10 @@ public class Main extends Application {
 
     public static void main(String[] args) {
         launch(args);
+    }
+
+    @Override
+    public void stop(){
+        System.exit(0);
     }
 }

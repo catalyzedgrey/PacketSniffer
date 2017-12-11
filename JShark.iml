@@ -8,5 +8,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="JShark" level="project" />
+    <orderEntry type="library" name="jnetpcap" level="project" />
   </component>
 </module>

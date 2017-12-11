@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="JShark">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/jnetpcap.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <NATIVE>
+      <root url="file://$PROJECT_DIR$" />
+    </NATIVE>
+    <SOURCES />
+  </library>
+</component>

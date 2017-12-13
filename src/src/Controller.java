@@ -3,7 +3,7 @@ package src;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import jdk.internal.org.objectweb.asm.tree.FrameNode;
+//import jdk.internal.org.objectweb.asm.tree.FrameNode;
 import org.jnetpcap.Pcap;
 import org.jnetpcap.PcapIf;
 import org.jnetpcap.packet.PcapPacketHandler;
@@ -121,14 +121,7 @@ public class Controller {
             return;
         }
 
-        final int[] j = {0};
-        PcapPacketHandler<String> jpacketHandler = (packet, user) -> {
-            Ip4 ip = new Ip4();
-            if (!packet.hasHeader(ip)) {
-                return; // Not IP packet
-            }
-            System.out.println(packet);
-        };
+        PcapPacketHandler<String> jpacketHandler = new PacketHandler();
         pcap.loop(1, jpacketHandler, "jNetPcap");
         pcap.close();
 
@@ -138,7 +131,7 @@ public class Controller {
         // Show what happened
         System.out.println("frameNo: " + frameNo + baos.toString());
 
-        Platform.runLater(() -> PacketsListView.getItems().add("Frame #" + frameNo++));
+        Platform.runLater(() -> PacketsListView.getItems().add("Frame #" + frameNo++ + " " + Parser.PrintInfo()));
         allPackets.add(baos.toString());
     }
 }

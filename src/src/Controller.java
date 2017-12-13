@@ -3,17 +3,13 @@ package src;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-//import jdk.internal.org.objectweb.asm.tree.FrameNode;
 import org.jnetpcap.Pcap;
 import org.jnetpcap.PcapIf;
-import org.jnetpcap.packet.PcapPacketHandler;
-import org.jnetpcap.protocol.network.Ip4;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
-
 
 public class Controller {
     private List<PcapIf> alldevs;
@@ -26,17 +22,23 @@ public class Controller {
     private TextArea PacketInfoTextArea;
     @FXML
     private ListView PacketsListView;
+    @FXML
+    private Button pcapSaveBtn;
+    @FXML
+    private TextField filterTxtField;
 
     private Boolean Capturing = false;
-    private Thread captureThread;
 
     private ArrayList<String> allPackets;
 
     private int frameNo;
 
+    private Pcap pcap;
+
     public void initialize() {
-        initNetworks();
+        CaptureBtnNormalStyle();
         allPackets = new ArrayList<>();
+        initNetworks();
     }
 
     private void initNetworks() {
@@ -50,50 +52,65 @@ public class Controller {
         //Get network devices and add it to combobox
         int i = 0;
         for (PcapIf device : alldevs) {
-            netDevicesCombo.getItems().addAll(String.format("#%d: [%s]", i++, (device.getDescription() != null) ? device.getDescription()
-                    : device.getName()));
+            netDevicesCombo.getItems().addAll(String.format("#%d: [%s]", i++,
+                    (device.getDescription() != null) ? device.getDescription() : device.getName()));
         }
+        //selects first item in the combobox
         netDevicesCombo.getSelectionModel().selectFirst();
     }
 
-    public void CaptureBtnClick() {
-        if (Capturing) {
-            Capturing = false;
-            CaptureBtn.setText("Start Capturing");
-        } else {
-            Capturing = true;
-            CaptureBtn.setText("Stop Capturing");
-            resetCapturing();
-            captureThread = new Thread(this::CaptureControl);
-            captureThread.start();
-        }
+    private void CaptureBtnNormalStyle() {
+        CaptureBtn.setText("Start Capturing");
+        CaptureBtn.setStyle("-fx-background-color: rgba(0, 0, 0, 0.2);");
     }
 
-    private void resetCapturing() {
+    private void CaptureBtnCapturingStyle() {
+        CaptureBtn.setText("Stop Capturing");
+        CaptureBtn.setStyle("-fx-background-color: rgba(0, 255, 0, 0.2);");
+    }
+
+    private void startCapturing() {
         frameNo = 1;
         allPackets.clear();
         PacketsListView.getItems().clear();
         PacketInfoTextArea.setText("");
+
+        //Starts a new thread that captures packets and add them
+        new Thread(() -> {
+            while (Capturing)
+                addNextPacket();
+        }).start();
     }
 
-    private void CaptureControl() {
-        while (Capturing)
-            capture();
+    //Capture Btn Handler
+    public void CaptureBtnClick() {
+        if (Capturing) {
+            //Stop capturing
+            Capturing = false; //This will finish the thread that was created in "startCapturing()"
+            pcap.breakloop();
+            pcap.close();
+            CaptureBtnNormalStyle();
+        } else {
+            //Start capturing
+            CaptureBtnCapturingStyle();
+            Capturing = true;
+            startCapturing();
+        }
     }
 
     public void ListViewClicked() {
-        try {
+        try { //Shows the selected packet (from the listview) info in the text area
             PacketInfoTextArea.setText(allPackets.get(PacketsListView.getSelectionModel().getSelectedIndex()));
         } catch (Exception e) {
         }
     }
 
-    private void capture() {
+    private void addNextPacket() {
         // Create a stream to hold the output
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(baos);
         // IMPORTANT: Save the old System.out!
-        PrintStream old = System.out;
+        PrintStream old = System.out; /////////////////////////////
         // Tell Java to use your special stream
         System.setOut(ps);
 
@@ -101,37 +118,41 @@ public class Controller {
         try {
             device = alldevs.get(netDevicesCombo.getSelectionModel().getSelectedIndex());
         } catch (Exception e) {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("ERROR");
-            alert.setContentText("You have not chosen a network device!");
-            alert.showAndWait();
             return;
         }
-
         int snaplen = 64 * 1024; // Capture all packets, no trucation
         int flags = Pcap.MODE_PROMISCUOUS; // capture all packets
         int timeout = 10 * 1000; // 10 seconds in millis
-        Pcap pcap = Pcap.openLive(device.getName(), snaplen, flags, timeout, errbuf);
-        if (pcap == null) {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("ERROR");
-            alert.setContentText("Error while opening device for capture: "
-                    + errbuf.toString());
-            alert.showAndWait();
-            return;
-        }
 
-        PcapPacketHandler<String> jpacketHandler = new PacketHandler();
-        pcap.loop(1, jpacketHandler, "jNetPcap");
-        pcap.close();
+        pcap = Pcap.openLive(device.getName(), snaplen, flags, timeout, errbuf);
+
+        if (pcap == null)
+            return;
+
+        pcap.loop(1, new PacketHandler(), "jNetPcap");
+        //Because some frames can still show after clicking stop capturing
+        //When stop capturing is clicked, next line will instantly fire
+        if (!Capturing)
+            return;
 
         // Put things back
         System.out.flush();
         System.setOut(old);
         // Show what happened
-        System.out.println("frameNo: " + frameNo + baos.toString());
+        //System.out.println("frameNo: " + frameNo + baos.toString());
 
+        //Add captured packet info in both the ListView and the array of strings (allPackets)
         Platform.runLater(() -> PacketsListView.getItems().add("Frame #" + frameNo++ + " " + Parser.PrintInfo()));
         allPackets.add(baos.toString());
+    }
+
+    //triggers when pcapSaveBtn is clicked
+    public void pcapSaveBtnClicked() {
+
+    }
+
+    //triggers when filterTxtField is clicked
+    public void filterTxtFieldClicked() {
+
     }
 }

@@ -29,6 +29,11 @@
                <FlowPane.margin>
                   <Insets left="5.0" />
                </FlowPane.margin></Button>
+            <Button fx:id="pcapLoadBtn" layoutX="426.0" layoutY="10.0" mnemonicParsing="false" onAction="#pcapLoadBtnClicked" text="Load pcap" wrapText="true">
+               <FlowPane.margin>
+                  <Insets left="5.0" />
+               </FlowPane.margin>
+            </Button>
             </children>
         </FlowPane>
       <ListView fx:id="PacketsListView" layoutX="7.0" layoutY="36.0" onMouseClicked="#ListViewClicked" prefHeight="221.0" prefWidth="600.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" />

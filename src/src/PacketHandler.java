@@ -16,7 +16,6 @@ public class PacketHandler implements PcapPacketHandler<String> {
     @Override
     public void nextPacket(PcapPacket pcapPacket, String s) {
         Parser.parse(pcapPacket.toHexdump(pcapPacket.size(), false, false, true));
-        System.out.println(pcapPacket);
         controller.allPackets.add(pcapPacket); //Add captured packet info in both the ListView and the array of strings (allPacketsStrings)
         Platform.runLater(() -> controller.PacketsListView.getItems().add("#" + (controller.frameNo++) + " " + Parser.PrintInfo()));
     }

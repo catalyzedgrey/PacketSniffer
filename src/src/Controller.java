@@ -1,5 +1,6 @@
 package src;
 
+import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -145,6 +146,8 @@ public class Controller {
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("pcap files (*.pcap)", "*.pcap"));
         fileChooser.setInitialFileName("Packets");
         File file = fileChooser.showSaveDialog(Main.stage);
+        if (file == null) //User pressed cancel
+            return;
 
         final Pcap pcap = Pcap.openDead(dlt, snaplen);
         dumper = pcap.dumpOpen(file.getAbsolutePath()); //calling pcap dumper to open the created file
@@ -165,7 +168,17 @@ public class Controller {
     }
 
     public void pcapLoadBtnClicked() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Pcap path");
+        //Set extension filter
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("pcap files (*.pcap)", "*.pcap"));
+        File file = fileChooser.showOpenDialog(Main.stage);
+        if (file == null) //User pressed cancel
+            return;
 
+        Pcap pcap = Pcap.openOffline(file.getAbsolutePath(), errbuf);
+        //max saved packet load 1000 packet
+        pcap.loop(1000, pHandler, "jNetPcap");
+        pcap.close();
     }
-
 }

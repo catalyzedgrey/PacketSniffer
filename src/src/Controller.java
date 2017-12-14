@@ -3,9 +3,11 @@ package src;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.stage.FileChooser;
 import org.jnetpcap.*;
 import org.jnetpcap.packet.PcapPacket;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -103,14 +105,6 @@ public class Controller {
     }
 
     public void ListViewClicked() {
-       /* Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Save pcap");
-        if (PacketsListView.getSelectionModel().getSelectedItems().size() > 1)
-            alert.setContentText("MORE THAN ONE ");
-        else
-            alert.setContentText(" ONE ");
-        alert.showAndWait();*/
-
         //Shows info only if selecting one packet
         if (PacketsListView.getSelectionModel().getSelectedItems().size() == 1)
             try { //Shows the selected packet (from the listview) info in the text area
@@ -133,18 +127,32 @@ public class Controller {
 
     //triggers when pcapSaveBtn is clicked
     public void pcapSaveBtnClicked() {
-        final PcapDumper dumper;
-        //creating a file
-        final String fileName = "savedPacket.pcap";
-        final Pcap pcap = Pcap.openDead(dlt, snaplen);
-        dumper = pcap.dumpOpen(fileName); //calling pcap dumper to open the created file
         //get all selected indices from the listview
         ObservableList<Integer> selectedIndices = PacketsListView.getSelectionModel().getSelectedIndices();
+        if (selectedIndices.size() == 0) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Error");
+            alert.setHeaderText("No packets are selected!");
+            alert.showAndWait();
+            return;
+        }
+
+        final PcapDumper dumper;
+        //creating a file
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save path");
+        //Set extension filter
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("pcap files (*.pcap)", "*.pcap"));
+        fileChooser.setInitialFileName("Packets");
+        File file = fileChooser.showSaveDialog(Main.stage);
+
+        final Pcap pcap = Pcap.openDead(dlt, snaplen);
+        dumper = pcap.dumpOpen(file.getAbsolutePath()); //calling pcap dumper to open the created file
+
         for (Integer i : selectedIndices) {
             PcapPacket packet = allPackets.get(i);
             //giving your packet a header
             final PcapHeader h = new PcapHeader(packet.size(), packet.size());
-            //SHOULD NOT OVERWRITE FILE //IMPLEMENT LATER ///////////////////////////////////////////////////////////////////////////
             dumper.dump(h, packet); //save num packets with the initialized header
         }
         dumper.close();

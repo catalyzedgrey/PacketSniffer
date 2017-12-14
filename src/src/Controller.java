@@ -1,5 +1,6 @@
 package src;
 
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import org.jnetpcap.*;
@@ -40,6 +41,7 @@ public class Controller {
         CaptureBtnNormalStyle();
         allPackets = new ArrayList<>();
         pHandler = new PacketHandler(this);
+        PacketsListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         initNetworks();
     }
 
@@ -101,10 +103,22 @@ public class Controller {
     }
 
     public void ListViewClicked() {
-        try { //Shows the selected packet (from the listview) info in the text area
-            PacketInfoTextArea.setText(allPackets.get(PacketsListView.getSelectionModel().getSelectedIndex()).toString());
-        } catch (Exception e) {
-        }
+       /* Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Save pcap");
+        if (PacketsListView.getSelectionModel().getSelectedItems().size() > 1)
+            alert.setContentText("MORE THAN ONE ");
+        else
+            alert.setContentText(" ONE ");
+        alert.showAndWait();*/
+
+        //Shows info only if selecting one packet
+        if (PacketsListView.getSelectionModel().getSelectedItems().size() == 1)
+            try { //Shows the selected packet (from the listview) info in the text area
+                PacketInfoTextArea.setText(allPackets.get(PacketsListView.getSelectionModel().getSelectedIndex()).toString());
+            } catch (Exception e) {
+            }
+        else
+            PacketInfoTextArea.setText("");
     }
 
     private void addNextPacket() {
@@ -119,17 +133,20 @@ public class Controller {
 
     //triggers when pcapSaveBtn is clicked
     public void pcapSaveBtnClicked() {
-        final Pcap pcap = Pcap.openDead(dlt, snaplen);
-
-        PcapPacket packet = allPackets.get(PacketsListView.getSelectionModel().getSelectedIndex());
-
-        //giving your packet a header; which will be passed to the dumper method later
-        final PcapHeader h = new PcapHeader(packet.size(), packet.size());
+        final PcapDumper dumper;
         //creating a file
-        //SHOULD NOT OVERWRITE FILE //IMPLEMENT LATER ///////////////////////////////////////////////////////////////////////////
-        final String saved_packets = "savedPacket.pcap";
-        final PcapDumper dumper = pcap.dumpOpen(saved_packets); //calling pcap dumper to open the created file
-        dumper.dump(h, packet); //save num packets with the initialized header
+        final String fileName = "savedPacket.pcap";
+        final Pcap pcap = Pcap.openDead(dlt, snaplen);
+        dumper = pcap.dumpOpen(fileName); //calling pcap dumper to open the created file
+        //get all selected indices from the listview
+        ObservableList<Integer> selectedIndices = PacketsListView.getSelectionModel().getSelectedIndices();
+        for (Integer i : selectedIndices) {
+            PcapPacket packet = allPackets.get(i);
+            //giving your packet a header
+            final PcapHeader h = new PcapHeader(packet.size(), packet.size());
+            //SHOULD NOT OVERWRITE FILE //IMPLEMENT LATER ///////////////////////////////////////////////////////////////////////////
+            dumper.dump(h, packet); //save num packets with the initialized header
+        }
         dumper.close();
         pcap.close();
     }

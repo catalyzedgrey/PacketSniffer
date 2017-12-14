@@ -1,19 +1,14 @@
 package src;
 
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import org.jnetpcap.Pcap;
-import org.jnetpcap.PcapIf;
+import org.jnetpcap.*;
+import org.jnetpcap.packet.PcapPacket;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Controller {
-    private List<PcapIf> alldevs;
-    private StringBuilder errbuf;
     @FXML
     private ComboBox netDevicesCombo;
     @FXML
@@ -21,23 +16,30 @@ public class Controller {
     @FXML
     private TextArea PacketInfoTextArea;
     @FXML
-    private ListView PacketsListView;
-    @FXML
-    private Button pcapSaveBtn;
+    public ListView PacketsListView;
     @FXML
     private TextField filterTxtField;
 
+    private List<PcapIf> alldevs;
+    private StringBuilder errbuf;
+
     private Boolean Capturing = false;
+    public int frameNo;
 
-    private ArrayList<String> allPackets;
+    public ArrayList<PcapPacket> allPackets;
 
-    private int frameNo;
-
+    private PacketHandler pHandler;
     private Pcap pcap;
+    private int snaplen = 64 * 1024; // Capture all packets, no trucation
+    private int flags = Pcap.MODE_PROMISCUOUS; // capture all packets
+    private int timeout = 10 * 1000; // 10 seconds in millis
+    final int dlt = PcapDLT.EN10MB.value;
+
 
     public void initialize() {
         CaptureBtnNormalStyle();
         allPackets = new ArrayList<>();
+        pHandler = new PacketHandler(this);
         initNetworks();
     }
 
@@ -100,55 +102,36 @@ public class Controller {
 
     public void ListViewClicked() {
         try { //Shows the selected packet (from the listview) info in the text area
-            PacketInfoTextArea.setText(allPackets.get(PacketsListView.getSelectionModel().getSelectedIndex()));
+            PacketInfoTextArea.setText(allPackets.get(PacketsListView.getSelectionModel().getSelectedIndex()).toString());
         } catch (Exception e) {
         }
     }
 
     private void addNextPacket() {
-        // Create a stream to hold the output
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintStream ps = new PrintStream(baos);
-        // IMPORTANT: Save the old System.out!
-        PrintStream old = System.out; /////////////////////////////
-        // Tell Java to use your special stream
-        System.setOut(ps);
-
-        PcapIf device = null;
         try {
-            device = alldevs.get(netDevicesCombo.getSelectionModel().getSelectedIndex());
+            PcapIf device = alldevs.get(netDevicesCombo.getSelectionModel().getSelectedIndex());
+            pcap = Pcap.openLive(device.getName(), snaplen, flags, timeout, errbuf);
+            pcap.loop(1, pHandler, "jNetPcap");
         } catch (Exception e) {
             return;
         }
-        int snaplen = 64 * 1024; // Capture all packets, no trucation
-        int flags = Pcap.MODE_PROMISCUOUS; // capture all packets
-        int timeout = 10 * 1000; // 10 seconds in millis
-
-        pcap = Pcap.openLive(device.getName(), snaplen, flags, timeout, errbuf);
-
-        if (pcap == null)
-            return;
-
-        pcap.loop(1, new PacketHandler(), "jNetPcap");
-        //Because some frames can still show after clicking stop capturing
-        //When stop capturing is clicked, next line will instantly fire
-        if (!Capturing)
-            return;
-
-        // Put things back
-        System.out.flush();
-        System.setOut(old);
-        // Show what happened
-        //System.out.println("frameNo: " + frameNo + baos.toString());
-
-        //Add captured packet info in both the ListView and the array of strings (allPackets)
-        Platform.runLater(() -> PacketsListView.getItems().add("Frame #" + frameNo++ + " " + Parser.PrintInfo()));
-        allPackets.add(baos.toString());
     }
 
     //triggers when pcapSaveBtn is clicked
     public void pcapSaveBtnClicked() {
+        final Pcap pcap = Pcap.openDead(dlt, snaplen);
 
+        PcapPacket packet = allPackets.get(PacketsListView.getSelectionModel().getSelectedIndex());
+
+        //giving your packet a header; which will be passed to the dumper method later
+        final PcapHeader h = new PcapHeader(packet.size(), packet.size());
+        //creating a file
+        //SHOULD NOT OVERWRITE FILE //IMPLEMENT LATER ///////////////////////////////////////////////////////////////////////////
+        final String saved_packets = "savedPacket.pcap";
+        final PcapDumper dumper = pcap.dumpOpen(saved_packets); //calling pcap dumper to open the created file
+        dumper.dump(h, packet); //save num packets with the initialized header
+        dumper.close();
+        pcap.close();
     }
 
     //triggers when filterTxtField is clicked

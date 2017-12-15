@@ -27,7 +27,7 @@ public class Controller {
     private List<PcapIf> alldevs;
     private StringBuilder errbuf;
 
-    private Boolean Capturing = false;
+    private Boolean Capturing;
     public int frameNo;
 
     public ArrayList<PcapPacket> allPackets;
@@ -41,11 +41,13 @@ public class Controller {
 
 
     public void initialize() {
-        CaptureBtnNormalStyle();
         allPackets = new ArrayList<>();
         pHandler = new PacketHandler(this);
         PacketsListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         initNetworks();
+
+        Capturing = false;
+        CaptureBtnClick();
     }
 
     private void initNetworks() {

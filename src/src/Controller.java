@@ -132,6 +132,7 @@ public class Controller {
         ObservableList<Integer> selectedIndices = PacketsListView.getSelectionModel().getSelectedIndices();
         if (selectedIndices.size() == 0) {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
+
             alert.setTitle("Error");
             alert.setHeaderText("No packets are selected!");
             alert.showAndWait();
@@ -173,6 +174,9 @@ public class Controller {
         //Set extension filter
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("pcap files (*.pcap)", "*.pcap"));
         File file = fileChooser.showOpenDialog(Main.stage);
+        if(file != null) //clears only when user chooses a file
+            PacketsListView.getItems().clear();
+      
         if (file == null) //User pressed cancel
             return;
 

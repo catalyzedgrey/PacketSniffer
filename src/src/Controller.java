@@ -76,11 +76,15 @@ public class Controller {
         CaptureBtn.setStyle("-fx-background-color: rgba(0, 255, 0, 0.2);");
     }
 
-    private void startCapturing() {
+    private void clearPackets() {
         frameNo = 1;
         allPackets.clear();
         PacketsListView.getItems().clear();
         PacketInfoTextArea.setText("");
+    }
+
+    private void startCapturing() {
+        clearPackets();
 
         //Starts a new thread that captures packets and add them
         new Thread(() -> {
@@ -174,11 +178,12 @@ public class Controller {
         //Set extension filter
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("pcap files (*.pcap)", "*.pcap"));
         File file = fileChooser.showOpenDialog(Main.stage);
-        if(file != null) //clears only when user chooses a file
-            PacketsListView.getItems().clear();
-      
+
         if (file == null) //User pressed cancel
             return;
+
+        //clears only when user chooses a file
+        clearPackets();
 
         Pcap pcap = Pcap.openOffline(file.getAbsolutePath(), errbuf);
         //max saved packet load 1000 packet

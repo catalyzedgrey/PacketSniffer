@@ -1,5 +1,7 @@
 package src;
 
+import org.jnetpcap.packet.PcapPacket;
+
 public class Parser {
 
     private static String destinationMacAddress;
@@ -14,7 +16,7 @@ public class Parser {
     private static int dstPortNum;
 
 
-    public static void parse(String s){
+    public static void parse(String s, PcapPacket packet){
         s = s.replaceAll("\\s+", " ").trim();
         destinationMacAddress = s.substring(0, 17);
         destinationMacAddress = destinationMacAddress.replace(" ", ":");
@@ -47,6 +49,11 @@ public class Parser {
         }
         //System.out.println("Source Port Number: " + dstPortNum);
         //System.out.println("\n-------------------------------------------------------------------\n");
+    }
+
+
+    public static String getProtocolType(){
+        return protocolType.trim();
     }
 
     public static String PrintInfo(){

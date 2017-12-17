@@ -22,7 +22,7 @@ public class Controller {
     @FXML
     public ListView PacketsListView;
     @FXML
-    private TextField filterTxtField;
+    public TextField filterTxtField;
 
     private List<PcapIf> alldevs;
     private StringBuilder errbuf;

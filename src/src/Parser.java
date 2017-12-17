@@ -27,7 +27,11 @@ public class Parser {
         //System.out.println("Type: " + etherType);
         int TotalLength = UtilititesFunctions.getDecimalFromHex(s.substring(47, 53));
         //System.out.println("Total Length: " + TotalLength);
-        protocolType = UtilititesFunctions.getProtocolType(s.substring(69, 71));
+        if(etherType.equals("Internet Protocol version 4 (IPv4)") || etherType.equals("Internet Protocol Version 6 (IPv6)")){
+            protocolType = UtilititesFunctions.getProtocolType(s.substring(69, 71));
+        }else{
+            protocolType = etherType;
+        }
         //System.out.println("Protocol: " + protocolType);
         Identification = s.substring(54, 59).replace(" ", "");
         //System.out.println("Identification: 0x" + Identification);
@@ -38,11 +42,15 @@ public class Parser {
         srcPortNum = UtilititesFunctions.getDecimalFromHex(s.substring(102, 108));
         //System.out.println("Source Port Number: " + srcPortNum);
         dstPortNum = UtilititesFunctions.getDecimalFromHex(s.substring(109, 115));
+        if(protocolType.trim().equals("TCP")){
+            protocolType = UtilititesFunctions.checkPortsForProtocols(protocolType, srcPortNum, dstPortNum);
+        }
         //System.out.println("Source Port Number: " + dstPortNum);
         //System.out.println("\n-------------------------------------------------------------------\n");
     }
 
     public static String PrintInfo(){
-        return "\t\t\tSource\t\t\tDestination\t\t\tProtocol\t\t\t\n\t\t\t\t\t" + srcIP + "\t\t\t" + dstIP + "\t\t\t" + protocolType+ "\t\t\t";
+        return "\t\t\tSource\t\t\t\tDestination\t\t\t\tProtocol\t\t\t\n\t\t\t" + srcIP + "\t\t" + dstIP + "\t\t" + protocolType+ "\t\t\t";
+
     }
 }

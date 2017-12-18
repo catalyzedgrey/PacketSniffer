@@ -1,7 +1,8 @@
 package src;
 
-import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.FileChooser;
@@ -18,9 +19,11 @@ public class Controller {
     @FXML
     private Button CaptureBtn;
     @FXML
+    private Button pcapLoadBtn;
+    @FXML
     private TextArea PacketInfoTextArea;
     @FXML
-    public ListView PacketsListView;
+    public ListView<String> PacketsListView;
     @FXML
     public TextField filterTxtField;
 
@@ -31,26 +34,43 @@ public class Controller {
     public int frameNo;
 
     public ArrayList<PcapPacket> allPackets;
+    public ObservableList<String> observablePackets;
+    private FilteredList<String> filterItems;
 
     private PacketHandler pHandler;
     private Pcap pcap;
     private int snaplen = 64 * 1024; // Capture all packets, no trucation
-    private int flags = Pcap.MODE_PROMISCUOUS; // capture all packets
+    private int flags = Pcap.MODE_PROMISCUOUS;
     private int timeout = 10 * 1000; // 10 seconds in millis
     final int dlt = PcapDLT.EN10MB.value;
 
 
     public void initialize() {
         allPackets = new ArrayList<>();
+        observablePackets = FXCollections.observableArrayList();
+        filterItems = new FilteredList<>(observablePackets);
+
         pHandler = new PacketHandler(this);
         PacketsListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        initNetworks();
+
+        PacketsListView.setItems(filterItems); // bind predicate to text filterTxtField
+        filterItems.predicateProperty().bind(javafx.beans.binding.Bindings.createObjectBinding(() -> {
+            String text = filterTxtField.getText();
+            if (text == null || text.isEmpty()) {
+                return null;
+            } else {
+                final String uppercase = text.toUpperCase();
+                return (String) -> String.toUpperCase().contains(uppercase);
+            }
+        }, filterTxtField.textProperty()));
+
+        initNetworkDevices();
 
         Capturing = false;
-        CaptureBtnClick();
+        //CaptureBtnClick();
     }
 
-    private void initNetworks() {
+    private void initNetworkDevices() {
         alldevs = new ArrayList<>();
         errbuf = new StringBuilder(); // For any error msgs
         int r = Pcap.findAllDevs(alldevs, errbuf);
@@ -81,6 +101,8 @@ public class Controller {
     private void clearPackets() {
         frameNo = 1;
         allPackets.clear();
+        observablePackets.clear();
+        filterItems.clear();
         PacketsListView.getItems().clear();
         PacketInfoTextArea.setText("");
     }
@@ -115,7 +137,9 @@ public class Controller {
         //Shows info only if selecting one packet
         if (PacketsListView.getSelectionModel().getSelectedItems().size() == 1)
             try { //Shows the selected packet (from the listview) info in the text area
-                PacketInfoTextArea.setText(allPackets.get(PacketsListView.getSelectionModel().getSelectedIndex()).toString());
+                String s = PacketsListView.getSelectionModel().getSelectedItem();
+                int index = Integer.parseInt(s.substring(1, s.indexOf(" "))) - 1;
+                PacketInfoTextArea.setText(allPackets.get(index).toString());
             } catch (Exception e) {
             }
         else
@@ -128,7 +152,6 @@ public class Controller {
             pcap = Pcap.openLive(device.getName(), snaplen, flags, timeout, errbuf);
             pcap.loop(1, pHandler, "jNetPcap");
         } catch (Exception e) {
-            return;
         }
     }
 
@@ -138,7 +161,6 @@ public class Controller {
         ObservableList<Integer> selectedIndices = PacketsListView.getSelectionModel().getSelectedIndices();
         if (selectedIndices.size() == 0) {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
-
             alert.setTitle("Error");
             alert.setHeaderText("No packets are selected!");
             alert.showAndWait();
@@ -156,25 +178,31 @@ public class Controller {
         if (file == null) //User pressed cancel
             return;
 
-        final Pcap pcap = Pcap.openDead(dlt, snaplen);
-        dumper = pcap.dumpOpen(file.getAbsolutePath()); //calling pcap dumper to open the created file
-
-        for (Integer i : selectedIndices) {
-            PcapPacket packet = allPackets.get(i);
+        final Pcap pcapDead = Pcap.openDead(dlt, snaplen);
+        dumper = pcapDead.dumpOpen(file.getAbsolutePath()); //calling pcap dumper to open the created file
+        for (String s : PacketsListView.getSelectionModel().getSelectedItems()) {
+            int index = Integer.parseInt(s.substring(1, s.indexOf(" "))) - 1;
+            final PcapPacket packet = allPackets.get(index);
+            //System.out.println(s);
+            //System.out.println(packet);
             //giving your packet a header
             final PcapHeader h = new PcapHeader(packet.size(), packet.size());
             dumper.dump(h, packet); //save num packets with the initialized header
         }
         dumper.close();
-        pcap.close();
-    }
-
-    //triggers when filterTxtField is clicked
-    public void filterTxtFieldClicked() {
-
+        pcapDead.close();
     }
 
     public void pcapLoadBtnClicked() {
+
+        if (Capturing) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Error");
+            alert.setHeaderText("Please stop capturing first.");
+            alert.showAndWait();
+            return;
+        }
+
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Pcap path");
         //Set extension filter
@@ -187,9 +215,9 @@ public class Controller {
         //clears only when user chooses a file
         clearPackets();
 
-        Pcap pcap = Pcap.openOffline(file.getAbsolutePath(), errbuf);
+        Pcap pcapOff = Pcap.openOffline(file.getAbsolutePath(), errbuf);
         //max saved packet load 1000 packet
-        pcap.loop(1000, pHandler, "jNetPcap");
-        pcap.close();
+        pcapOff.loop(1000, pHandler, "jNetPcap");
+        pcapOff.close();
     }
 }

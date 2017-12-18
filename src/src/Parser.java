@@ -1,22 +1,23 @@
 package src;
 
-import org.jnetpcap.packet.PcapPacket;
+import org.jnetpcap.packet.*;
 
 public class Parser {
 
-    private static String destinationMacAddress;
-    private static String sourceMacAddress;
-    private static String etherType;
-    private static int TotalLength;
-    private static String protocolType;
-    private static String Identification;
-    private static String srcIP;
-    private static String dstIP;
-    private static int srcPortNum;
-    private static int dstPortNum;
+    private String destinationMacAddress;
+    private String sourceMacAddress;
+    private String etherType;
+    private int TotalLength;
+    private String protocolType;
+    private String Identification;
+    private String srcIP;
+    private String dstIP;
+    private int srcPortNum;
+    private int dstPortNum;
 
+    public void parse(PcapPacket p) {
+        String s = p.toHexdump(p.size(), false, false, true);
 
-    public static void parse(String s, PcapPacket packet){
         s = s.replaceAll("\\s+", " ").trim();
         destinationMacAddress = s.substring(0, 17);
         destinationMacAddress = destinationMacAddress.replace(" ", ":");
@@ -27,11 +28,13 @@ public class Parser {
         etherType = s.substring(36, 41);
         etherType = UtilititesFunctions.getEtherType(etherType.replace(" ", ""));
         //System.out.println("Type: " + etherType);
-        int TotalLength = UtilititesFunctions.getDecimalFromHex(s.substring(47, 53));
+
+        TotalLength = UtilititesFunctions.getDecimalFromHex(s.substring(47, 53));
+
         //System.out.println("Total Length: " + TotalLength);
-        if(etherType.equals("Internet Protocol version 4 (IPv4)") || etherType.equals("Internet Protocol Version 6 (IPv6)")){
+        if (etherType.equals("Internet Protocol version 4 (IPv4)") || etherType.equals("Internet Protocol Version 6 (IPv6)")) {
             protocolType = UtilititesFunctions.getProtocolType(s.substring(69, 71));
-        }else{
+        } else {
             protocolType = etherType;
         }
         //System.out.println("Protocol: " + protocolType);
@@ -44,20 +47,17 @@ public class Parser {
         srcPortNum = UtilititesFunctions.getDecimalFromHex(s.substring(102, 108));
         //System.out.println("Source Port Number: " + srcPortNum);
         dstPortNum = UtilititesFunctions.getDecimalFromHex(s.substring(109, 115));
-        if(protocolType.trim().equals("TCP")){
-            protocolType = UtilititesFunctions.checkPortsForProtocols(protocolType, srcPortNum, dstPortNum);
-        }
+        //  if (protocolType.trim().equals("TCP")) {
+        protocolType = UtilititesFunctions.checkPortsForProtocols(protocolType, srcPortNum, dstPortNum);
+        //   }
         //System.out.println("Source Port Number: " + dstPortNum);
         //System.out.println("\n-------------------------------------------------------------------\n");
+
+//      String a = s.substring(s.indexOf("timestamp = "), s.indexOf("\n"));
     }
 
-
-    public static String getProtocolType(){
-        return protocolType.trim();
-    }
-
-    public static String PrintInfo(){
-        return "\t\t\tSource\t\t\t\tDestination\t\t\t\tProtocol\t\t\t\n\t\t\t" + srcIP + "\t\t" + dstIP + "\t\t" + protocolType+ "\t\t\t";
-
+    public String PrintInfo(PcapPacket p) {
+        parse(p);
+        return /*" Time " + "" + */ "\tSource " + srcIP + "\t/\tDestination " + dstIP + "\t/\tProtocol " + protocolType + "\t/\t" + TotalLength + " bytes" + " \n\n";
     }
 }

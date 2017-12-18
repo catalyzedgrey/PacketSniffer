@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Controller {
+    enum Connection { UDP, TCP};
+
     @FXML
     private ComboBox netDevicesCombo;
     @FXML
@@ -26,6 +28,8 @@ public class Controller {
     public ListView<String> PacketsListView;
     @FXML
     public TextField filterTxtField;
+    @FXML
+    private TreeView<String> PacketInfoTreeView;
 
     private List<PcapIf> alldevs;
     private StringBuilder errbuf;
@@ -104,7 +108,7 @@ public class Controller {
         observablePackets.clear();
         filterItems.clear();
         PacketsListView.getItems().clear();
-        PacketInfoTextArea.setText("");
+        //PacketInfoTextArea.setText("");
     }
 
     private void startCapturing() {
@@ -139,11 +143,196 @@ public class Controller {
             try { //Shows the selected packet (from the listview) info in the text area
                 String s = PacketsListView.getSelectionModel().getSelectedItem();
                 int index = Integer.parseInt(s.substring(1, s.indexOf(" "))) - 1;
-                PacketInfoTextArea.setText(allPackets.get(index).toString());
+                //PacketInfoTextArea.setText(allPackets.get(index).toString());
+                splitPacketInfo(allPackets.get(PacketsListView.getSelectionModel().getSelectedIndex()).toString());
             } catch (Exception e) {
             }
         else
             PacketInfoTextArea.setText("");
+    }
+
+    private void splitPacketInfo(String allInfo) {
+
+        System.out.println(allInfo);
+        boolean nearEnd = false;
+
+        TreeItem<String> dummyRoot = new TreeItem<>();
+        PacketInfoTreeView.setRoot(dummyRoot);
+        PacketInfoTreeView.setShowRoot(false);
+
+
+        TreeItem<String> frameRoot = new TreeItem<String>("Frame");
+        TreeItem<String> ethernetRoot = new TreeItem<String>("Ethernet");
+        TreeItem<String> ipRoot = new TreeItem<String>("IP");
+        TreeItem<String> tcpRoot = new TreeItem<String>("TCP");
+        TreeItem<String> udpRoot = new TreeItem<String>("Udp");
+        TreeItem<String> dataRoot = new TreeItem<String>("Data");
+        ArrayList<String> temp = new ArrayList<>();
+
+        String[] splitParts = allInfo.split("\\n");
+
+        Connection connection = null;
+
+
+        for (int i = 0; i < splitParts.length; i++) {
+            if (splitParts[i].startsWith("Frame:")) {
+                splitParts[i] = splitParts[i].replaceAll("Frame:", "");
+                //splitParts[i] = splitParts[i].replaceAll("[\\s&&[^\\n]]+", " ").replaceAll("(?m)^\\s|\\s$", "").replaceAll("\\n+", "\n").replaceAll("^\n|\n$", "");
+                splitParts[i] = splitParts[i].trim().replaceAll(" +", " ");
+                System.out.println(splitParts[i]);
+                //String [] dotParts = splitParts[i].split(":");
+
+                if (!splitParts[i].equals("")) {
+                    TreeItem<String> leaf = new TreeItem<String>(splitParts[i]);
+//                TreeItem<String> node= new TreeItem<String>(splitParts[i].substring(0, splitParts[i].indexOf(":")));
+                    frameRoot.getChildren().add(leaf);
+                    //node.getChildren().add(leaf);
+                }
+            }
+
+            if (splitParts[i].startsWith("Eth:")) {
+
+                splitParts[i] = splitParts[i].replaceAll("Eth:", "");
+                splitParts[i] = splitParts[i].replaceAll("Ethernet", "");
+                splitParts[i] = splitParts[i].replaceAll("\\*\\*\\*\\*\\*\\*\\*", "");
+                String str = " - \"";
+                String str2 = "\" -";
+                splitParts[i] = splitParts[i].replaceAll(str, "");
+                splitParts[i] = splitParts[i].replaceAll(str2, "");
+                //splitParts[i] = splitParts[i].replaceAll("[\\s&&[^\\n]]+", " ").replaceAll("(?m)^\\s|\\s$", "").replaceAll("\\n+", "\n").replaceAll("^\n|\n$", "");
+                splitParts[i] = splitParts[i].trim().replaceAll(" +", " ");
+                System.out.println(splitParts[i]);
+                //String [] dotParts = splitParts[i].split(":");
+
+                if (!splitParts[i].equals("")) {
+                    TreeItem<String> leaf = new TreeItem<String>(splitParts[i]);
+//                TreeItem<String> node= new TreeItem<String>(splitParts[i].substring(0, splitParts[i].indexOf(":")));
+                    ethernetRoot.getChildren().add(leaf);
+                    //node.getChildren().add(leaf);
+                }
+
+            }
+
+            if (splitParts[i].startsWith("Ip:") | splitParts[i].startsWith("Ip6:") | splitParts[i].startsWith("Ip4:")) {
+
+                splitParts[i] = splitParts[i].replaceAll("Ip: | (Ip6: \\*\\*\\*\\*\\*\\*\\*)| (Ip4: \\*\\*\\*\\*\\*\\*\\*)", "");
+//                splitParts[i] = splitParts[i].replaceAll("", "");
+                String str = " - \"";
+                String str2 = "\" -";
+                splitParts[i] = splitParts[i].replaceAll(str, "");
+                splitParts[i] = splitParts[i].replaceAll(str2, "");
+                //splitParts[i] = splitParts[i].replaceAll("[\\s&&[^\\n]]+", " ").replaceAll("(?m)^\\s|\\s$", "").replaceAll("\\n+", "\n").replaceAll("^\n|\n$", "");
+                splitParts[i] = splitParts[i].trim().replaceAll(" +", " ");
+                System.out.println(splitParts[i]);
+                //String [] dotParts = splitParts[i].split(":");
+
+                if (!splitParts[i].equals("")) {
+                    TreeItem<String> leaf = new TreeItem<String>(splitParts[i]);
+//                TreeItem<String> node= new TreeItem<String>(splitParts[i].substring(0, splitParts[i].indexOf(":")));
+                    ipRoot.getChildren().add(leaf);
+                    //node.getChildren().add(leaf);
+                }
+
+            }
+
+            if (splitParts[i].startsWith("Tcp:")) {
+                connection = Controller.Connection.TCP;
+
+                splitParts[i] = splitParts[i].replaceAll("Tcp: | (Tcp: \\*\\*\\*\\*\\*\\*\\*)| (Ip4: \\*\\*\\*\\*\\*\\*\\*)", "");
+//                splitParts[i] = splitParts[i].replaceAll("", "");
+                String str = " - \"";
+                String str2 = "\" -";
+                splitParts[i] = splitParts[i].replaceAll(str, "");
+                splitParts[i] = splitParts[i].replaceAll(str2, "");
+                //splitParts[i] = splitParts[i].replaceAll("[\\s&&[^\\n]]+", " ").replaceAll("(?m)^\\s|\\s$", "").replaceAll("\\n+", "\n").replaceAll("^\n|\n$", "");
+                splitParts[i] = splitParts[i].trim().replaceAll(" +", " ");
+                System.out.println(splitParts[i]);
+                //String [] dotParts = splitParts[i].split(":");
+
+                if (!splitParts[i].equals("")) {
+                    TreeItem<String> leaf = new TreeItem<String>(splitParts[i]);
+//                TreeItem<String> node= new TreeItem<String>(splitParts[i].substring(0, splitParts[i].indexOf(":")));
+                    tcpRoot.getChildren().add(leaf);
+                    //node.getChildren().add(leaf);
+                }
+
+            }
+
+            if (splitParts[i].startsWith("Udp:")) {
+                connection = Controller.Connection.UDP;
+
+                splitParts[i] = splitParts[i].replaceAll("Udp: | (Udp: \\*\\*\\*\\*\\*\\*\\*)", "");
+//                splitParts[i] = splitParts[i].replaceAll("", "");
+                String str = " - \"";
+                String str2 = "\" -";
+                splitParts[i] = splitParts[i].replaceAll(str, "");
+                splitParts[i] = splitParts[i].replaceAll(str2, "");
+                //splitParts[i] = splitParts[i].replaceAll("[\\s&&[^\\n]]+", " ").replaceAll("(?m)^\\s|\\s$", "").replaceAll("\\n+", "\n").replaceAll("^\n|\n$", "");
+                splitParts[i] = splitParts[i].trim().replaceAll(" +", " ");
+                System.out.println(splitParts[i]);
+                //String [] dotParts = splitParts[i].split(":");
+
+                if (!splitParts[i].equals("")) {
+                    TreeItem<String> leaf = new TreeItem<String>(splitParts[i]);
+//                TreeItem<String> node= new TreeItem<String>(splitParts[i].substring(0, splitParts[i].indexOf(":")));
+                    udpRoot.getChildren().add(leaf);
+                    //node.getChildren().add(leaf);
+                }
+
+            }
+
+            if (splitParts[i].startsWith("Data:") || nearEnd) {
+                nearEnd = true;
+
+                splitParts[i] = splitParts[i].replaceAll("Data: | (Data: \\*\\*\\*\\*\\*\\*\\*)", "");
+//                splitParts[i] = splitParts[i].replaceAll("", "");
+                String str = " - \"";
+                String str2 = "\" -";
+                splitParts[i] = splitParts[i].replaceAll(str, "");
+                splitParts[i] = splitParts[i].replaceAll(str2, "");
+                //splitParts[i] = splitParts[i].replaceAll("[\\s&&[^\\n]]+", " ").replaceAll("(?m)^\\s|\\s$", "").replaceAll("\\n+", "\n").replaceAll("^\n|\n$", "");
+                //splitParts[i] = splitParts[i].trim().replaceAll(" +", " ");
+                System.out.println(splitParts[i]);
+                //String [] dotParts = splitParts[i].split(":");
+
+                if (!splitParts[i].equals("")) {
+                    TreeItem<String> leaf = new TreeItem<String>(splitParts[i]);
+//                TreeItem<String> node= new TreeItem<String>(splitParts[i].substring(0, splitParts[i].indexOf(":")));
+                    dataRoot.getChildren().add(leaf);
+                    //node.getChildren().add(leaf);
+                }
+
+            }
+
+            if (i == splitParts.length - 1) {
+                dummyRoot.getChildren().add(frameRoot);
+                dummyRoot.getChildren().add(ethernetRoot);
+                dummyRoot.getChildren().add(ipRoot);
+                if(connection == Connection.TCP){
+                    dummyRoot.getChildren().add(tcpRoot);
+                }
+                if(connection == Connection.UDP){
+                    dummyRoot.getChildren().add(udpRoot);
+                }
+
+
+                dummyRoot.getChildren().add(dataRoot);
+            }
+//            if(splitParts[i].contains(splitParts[i+1]))
+//            {
+//                String [] dotParts = splitParts[i].split(":");
+//
+//                TreeItem<String> leaf= new TreeItem<String>(splitParts[i]);
+//                TreeItem<String> node= new TreeItem<String>(splitParts[i].substring(0, splitParts[i].indexOf(":")));
+//                node.getChildren().add(leaf);
+
+//            }
+            //dummyRoot.getChildren().add(frameRoot);
+
+        }
+
+
+
     }
 
     private void addNextPacket() {
